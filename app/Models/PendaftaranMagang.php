@@ -1,0 +1,53 @@
+<?php
+ 
+namespace App\Models;
+ 
+use Illuminate\Database\Eloquent\Model;
+ 
+class PendaftaranMagang extends Model
+{
+    protected $table = 'pendaftaran_magang';
+ 
+    protected $fillable = [
+        'mahasiswa_id',
+        'pembimbing_id',
+        'tanggal_mulai',
+        'tanggal_selesai',
+        'status',
+        'alasan_tolak',
+        'file_surat',
+    ];
+ 
+    // $casts memberitahu Laravel untuk otomatis mengubah tipe data
+    // kolom tertentu. Misalnya kolom tanggal akan otomatis
+    // diubah menjadi objek Carbon (library tanggal Laravel),
+    // bukan string biasa — lebih mudah untuk manipulasi tanggal.
+    protected $casts = [
+        'tanggal_mulai'   => 'date',
+        'tanggal_selesai' => 'date',
+    ];
+ 
+    // --- RELASI ---
+    public function mahasiswa()
+    {
+        return $this->belongsTo(Mahasiswa::class);
+    }
+ 
+    // nullable() di relasi ini karena pembimbing_id bisa NULL
+    public function pembimbing()
+    {
+        return $this->belongsTo(Pembimbing::class);
+    }
+ 
+    // hasOne karena satu pendaftaran hanya memiliki satu penilaian
+    public function penilaian()
+    {
+        return $this->hasOne(Penilaian::class, 'pendaftaran_id');
+    }
+ 
+    public function sertifikat()
+    {
+        return $this->hasOne(Sertifikat::class, 'pendaftaran_id');
+    }
+}
+ 
