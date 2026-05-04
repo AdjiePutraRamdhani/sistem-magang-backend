@@ -3,18 +3,13 @@
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\MahasiswaController;
+use App\Http\Controllers\Api\PembimbingController;
 use App\Http\Controllers\Api\PendaftaranController;
 use Illuminate\Support\Facades\Route;
 
-// ----------------------------------------------------------------
-// ROUTE PUBLIK
-// ----------------------------------------------------------------
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login',    [AuthController::class, 'login']);
 
-// ----------------------------------------------------------------
-// ROUTE TERPROTEKSI
-// ----------------------------------------------------------------
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me',      [AuthController::class, 'me']);
@@ -38,5 +33,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/sertifikat', [MahasiswaController::class, 'sertifikat']);
     });
 
-    // PEMBIMBING — akan ditambahkan di Tahap 6
+    // PEMBIMBING
+    Route::prefix('pembimbing')->group(function () {
+        Route::get('/dashboard',      [PembimbingController::class, 'dashboard']);
+        Route::get('/peserta',        [PembimbingController::class, 'peserta']);
+        Route::post('/nilai/{id}',    [PembimbingController::class, 'simpanNilai']);
+        Route::post('/sertifikat/{id}', [PembimbingController::class, 'uploadSertifikat']);
+    });
 });

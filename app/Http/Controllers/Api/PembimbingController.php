@@ -1,0 +1,119 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Penilaian;
+use App\Models\PendaftaranMagang;
+use Illuminate\Http\Request;
+
+class PembimbingController extends Controller
+{
+    // GET /api/pembimbing/dashboard
+    public function dashboard(Request $request)
+    {
+        $pembimbing = $request->user()->pembimbing;
+
+        if (!$pembimbing) {
+            return response()->json(['message' => 'Profil pembimbing tidak ditemukan.'], 404);
+        }
+
+        $baseQuery = PendaftaranMagang::where('pembimbing_id', $pembimbing->id);
+
+        return response()->json([
+            'total_peserta'   => (clone $baseQuery)->count(),
+            'belum_dinilai'   => (clone $baseQuery)
+                                    ->whereIn('status', ['disetujui', 'aktif'])
+                                    ->whereDoesntHave('penilaian')
+                                    ->count(),
+            'selesai_dinilai' => (clone $baseQuery)
+                                    ->where('status', 'selesai_dinilai')
+                                    ->count(),
+        ]);
+    }
+
+    // GET /api/pembimbing/peserta
+    public function peserta(Request $request)
+    {
+        $pembimbing = $request->user()->pembimbing;
+
+        $data = PendaftaranMagang::with(['mahasiswa.user', 'penilaian'])
+            ->where('pembimbing_id', $pembimbing->id)
+            ->latest()
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'id'              => $item->id,
+                    'nama_lengkap'    => $item->mahasiswa->user->nama_lengkap,
+                    'asal_instansi'   => $item->mahasiswa->asal_instansi,
+                    'program_studi'   => $item->mahasiswa->program_studi,
+                    'tanggal_mulai'   => $item->tanggal_mulai,
+                    'tanggal_selesai' => $item->tanggal_selesai,
+                    'status'          => $item->status,
+                    'sudah_dinilai'   => $item->penilaian !== null,
+                    'penilaian'       => $item->penilaian ? [
+                        'nilai_total'      => $item->penilaian->nilai_total,
+                        'kedisiplinan'     => $item->penilaian->kedisiplinan,
+                        'kemampuan_teknis' => $item->penilaian->kemampuan_teknis,
+                        'sikap'            => $item->penilaian->sikap,
+                        'kehadiran'        => $item->penilaian->kehadiran,
+                        'catatan'          => $item->penilaian->catatan,
+                    ] : null,
+                ];
+            });
+
+        return response()->json($data);
+    }
+
+    // POST /api/pembimbing/nilai/{id}
+    public function simpanNilai(Request $request, $id)
+    {
+        $pembimbing  = $request->user()->pembimbing;
+
+        $pendaftaran = PendaftaranMagang::where('id', $id)
+            ->where('pembimbing_id', $pembimbing->id)
+            ->firstOrFail();
+
+        if ($pendaftaran->tanggal_selesai > today()) {
+            return response()->json([
+                'message' => 'Penilaian belum bisa diberikan karena periode magang belum selesai.',
+            ], 422);
+        }
+
+        if ($pendaftaran->penilaian) {
+            return response()->json([
+                'message' => 'Peserta ini sudah pernah dinilai sebelumnya.',
+            ], 422);
+        }
+
+        $request->validate([
+            'kedisiplinan'     => 'required|integer|between:0,100',
+            'kemampuan_teknis' => 'required|integer|between:0,100',
+            'sikap'            => 'required|integer|between:0,100',
+            'kehadiran'        => 'required|integer|between:0,100',
+            'catatan'          => 'nullable|string|max:1000',
+        ]);
+
+        $nilaiTotal = (int) round(
+            ($request->kedisiplinan + $request->kemampuan_teknis
+             + $request->sikap + $request->kehadiran) / 4
+        );
+
+        Penilaian::create([
+            'pendaftaran_id'   => $pendaftaran->id,
+            'kedisiplinan'     => $request->kedisiplinan,
+            'kemampuan_teknis' => $request->kemampuan_teknis,
+            'sikap'            => $request->sikap,
+            'kehadiran'        => $request->kehadiran,
+            'nilai_total'      => $nilaiTotal,
+            'catatan'          => $request->catatan,
+        ]);
+
+        $pendaftaran->update(['status' => 'selesai_dinilai']);
+
+        return response()->json([
+            'message'     => 'Penilaian berhasil disimpan.',
+            'nilai_total' => $nilaiTotal,
+        ]);
+    }
+}

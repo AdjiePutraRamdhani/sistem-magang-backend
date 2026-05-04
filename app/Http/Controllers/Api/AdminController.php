@@ -18,7 +18,7 @@ class AdminController extends Controller
     public function dashboard()
     {
         return response()->json([
-            'total_peserta'   => PendaftaranMagang::count(),
+            'total_peserta'   => PendaftaranMagang::whereIn('status', ['disetujui','aktif','selesai_dinilai'])->count(),
             'menunggu'        => PendaftaranMagang::where('status', 'menunggu_persetujuan')->count(),
             'aktif'           => PendaftaranMagang::where('status', 'aktif')->count(),
             'selesai_dinilai' => PendaftaranMagang::where('status', 'selesai_dinilai')->count(),

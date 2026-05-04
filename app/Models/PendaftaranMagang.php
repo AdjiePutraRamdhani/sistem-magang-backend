@@ -23,8 +23,8 @@ class PendaftaranMagang extends Model
     // diubah menjadi objek Carbon (library tanggal Laravel),
     // bukan string biasa — lebih mudah untuk manipulasi tanggal.
     protected $casts = [
-        'tanggal_mulai'   => 'date',
-        'tanggal_selesai' => 'date',
+        'tanggal_mulai'   => 'date:Y-m-d',
+        'tanggal_selesai' => 'date:Y-m-d',
     ];
  
     // --- RELASI ---
