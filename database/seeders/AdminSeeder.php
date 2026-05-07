@@ -15,7 +15,7 @@ class AdminSeeder extends Seeder
             'email'        => 'admin@dispusip-riau.go.id',
             // Hash::make() mengenkripsi password menggunakan bcrypt
             // JANGAN simpan password dalam bentuk teks biasa di database!
-            'password'     => Hash::make('Admin@12345'),
+            'password'     => Hash::make('admin123'),
             'role'         => 'admin',
             'created_at'   => now(),
             'updated_at'   => now(),

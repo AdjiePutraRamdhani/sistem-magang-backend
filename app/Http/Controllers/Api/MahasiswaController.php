@@ -4,15 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PendaftaranMagang;
-use App\Models\Sertifikat;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class MahasiswaController extends Controller
 {
     // ----------------------------------------------------------------
     // GET /api/mahasiswa/dashboard
-    // Mengembalikan data pendaftaran aktif milik mahasiswa yang login
     // ----------------------------------------------------------------
     public function dashboard(Request $request)
     {
@@ -22,8 +19,6 @@ class MahasiswaController extends Controller
             return response()->json(['message' => 'Profil mahasiswa tidak ditemukan.'], 404);
         }
 
-        // Ambil pendaftaran terbaru milik mahasiswa ini beserta relasi
-        // penilaian dan sertifikat jika sudah ada
         $pendaftaran = PendaftaranMagang::with(['pembimbing.user', 'penilaian', 'sertifikat'])
             ->where('mahasiswa_id', $mahasiswa->id)
             ->latest()
@@ -55,8 +50,9 @@ class MahasiswaController extends Controller
                     'catatan'          => $pendaftaran->penilaian->catatan,
                 ] : null,
                 'sertifikat'      => $pendaftaran->sertifikat ? [
-                    'no_sertifikat' => $pendaftaran->sertifikat->no_sertifikat,
-                    'diterbitkan_at'=> $pendaftaran->sertifikat->diterbitkan_at,
+                    'no_sertifikat'  => $pendaftaran->sertifikat->no_sertifikat,
+                    'diterbitkan_at' => $pendaftaran->sertifikat->diterbitkan_at,
+                    'tersedia'       => $pendaftaran->sertifikat->file_pdf !== null,
                 ] : null,
             ] : null,
         ]);
@@ -64,7 +60,6 @@ class MahasiswaController extends Controller
 
     // ----------------------------------------------------------------
     // POST /api/mahasiswa/daftar
-    // Mahasiswa mengajukan pendaftaran magang — sesuai UC-03
     // ----------------------------------------------------------------
     public function daftar(Request $request)
     {
@@ -74,8 +69,6 @@ class MahasiswaController extends Controller
             return response()->json(['message' => 'Profil mahasiswa tidak ditemukan.'], 404);
         }
 
-        // Cek apakah sudah ada pendaftaran yang sedang aktif atau menunggu.
-        // Mahasiswa tidak boleh mendaftar dua kali bersamaan.
         $existing = PendaftaranMagang::where('mahasiswa_id', $mahasiswa->id)
             ->whereIn('status', ['menunggu_persetujuan', 'disetujui', 'aktif'])
             ->first();
@@ -89,13 +82,9 @@ class MahasiswaController extends Controller
         $request->validate([
             'tanggal_mulai'   => 'required|date|after_or_equal:today',
             'tanggal_selesai' => 'required|date|after:tanggal_mulai',
-            // File surat pengantar: wajib, format PDF atau DOCX, maks 5MB
             'file_surat'      => 'required|file|mimes:pdf,docx|max:5120',
         ]);
 
-        // Simpan file surat ke storage Laravel.
-        // Storage::disk('public') menyimpan file di folder 'storage/app/public/'
-        // yang bisa diakses publik setelah menjalankan 'php artisan storage:link'
         $filePath = $request->file('file_surat')
             ->store('surat_pengantar', 'public');
 
@@ -115,7 +104,9 @@ class MahasiswaController extends Controller
 
     // ----------------------------------------------------------------
     // GET /api/mahasiswa/sertifikat
-    // Mengecek ketersediaan sertifikat dan mengembalikan data lengkapnya
+    // Menampilkan sertifikat yang sudah diupload oleh Pembimbing Instansi.
+    // Sistem tidak lagi membuat sertifikat secara otomatis —
+    // sertifikat dibuat oleh instansi dan diupload oleh Pembimbing.
     // ----------------------------------------------------------------
     public function sertifikat(Request $request)
     {
@@ -126,30 +117,28 @@ class MahasiswaController extends Controller
             ->latest()
             ->first();
 
+        // Belum ada pendaftaran yang selesai dinilai
         if (!$pendaftaran) {
             return response()->json([
                 'tersedia' => false,
-                'message'  => 'Sertifikat belum tersedia. Menunggu penilaian dari Pembimbing.',
+                'pesan'    => 'Sertifikat belum tersedia. Menunggu penilaian dari Pembimbing.',
             ]);
         }
 
-        // Jika sertifikat belum pernah diterbitkan, buat sekarang
-        if (!$pendaftaran->sertifikat) {
-            $noSertifikat = $this->generateNomorSertifikat();
-
-            $sertifikat = Sertifikat::create([
-                'pendaftaran_id' => $pendaftaran->id,
-                'no_sertifikat'  => $noSertifikat,
+        // Sudah dinilai tapi sertifikat belum diupload pembimbing
+        if (!$pendaftaran->sertifikat || !$pendaftaran->sertifikat->file_pdf) {
+            return response()->json([
+                'tersedia' => false,
+                'pesan'    => 'Magang sudah selesai dinilai. Sertifikat sedang disiapkan oleh instansi dan akan diupload oleh Pembimbing.',
             ]);
-
-            $pendaftaran->load('sertifikat');
         }
 
         return response()->json([
-            'tersedia'    => true,
-            'sertifikat'  => [
+            'tersedia'   => true,
+            'sertifikat' => [
                 'no_sertifikat'    => $pendaftaran->sertifikat->no_sertifikat,
                 'diterbitkan_at'   => $pendaftaran->sertifikat->diterbitkan_at,
+                'url_pdf'          => asset('storage/' . $pendaftaran->sertifikat->file_pdf),
                 'nama_lengkap'     => $request->user()->nama_lengkap,
                 'asal_instansi'    => $mahasiswa->asal_instansi,
                 'program_studi'    => $mahasiswa->program_studi,
@@ -163,16 +152,5 @@ class MahasiswaController extends Controller
                 'kehadiran'        => $pendaftaran->penilaian?->kehadiran,
             ],
         ]);
-    }
-
-    // ----------------------------------------------------------------
-    // Fungsi pembantu: generate nomor sertifikat unik
-    // Format: DISPUSIP/MAG/YYYY/XXXX (contoh: DISPUSIP/MAG/2025/0042)
-    // ----------------------------------------------------------------
-    private function generateNomorSertifikat(): string
-    {
-        $tahun  = date('Y');
-        $urutan = Sertifikat::whereYear('diterbitkan_at', $tahun)->count() + 1;
-        return sprintf('DISPUSIP/MAG/%s/%04d', $tahun, $urutan);
     }
 }

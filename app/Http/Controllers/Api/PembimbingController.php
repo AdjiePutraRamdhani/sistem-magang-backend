@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Penilaian;
 use App\Models\PendaftaranMagang;
+use App\Models\Sertifikat;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class PembimbingController extends Controller
 {
@@ -21,13 +23,17 @@ class PembimbingController extends Controller
         $baseQuery = PendaftaranMagang::where('pembimbing_id', $pembimbing->id);
 
         return response()->json([
-            'total_peserta'   => (clone $baseQuery)->count(),
-            'belum_dinilai'   => (clone $baseQuery)
+            'total_peserta'    => (clone $baseQuery)->count(),
+            'belum_dinilai'    => (clone $baseQuery)
                                     ->whereIn('status', ['disetujui', 'aktif'])
                                     ->whereDoesntHave('penilaian')
                                     ->count(),
-            'selesai_dinilai' => (clone $baseQuery)
+            'selesai_dinilai'  => (clone $baseQuery)
                                     ->where('status', 'selesai_dinilai')
+                                    ->count(),
+            'belum_sertifikat' => (clone $baseQuery)
+                                    ->where('status', 'selesai_dinilai')
+                                    ->whereDoesntHave('sertifikat')
                                     ->count(),
         ]);
     }
@@ -37,7 +43,7 @@ class PembimbingController extends Controller
     {
         $pembimbing = $request->user()->pembimbing;
 
-        $data = PendaftaranMagang::with(['mahasiswa.user', 'penilaian'])
+        $data = PendaftaranMagang::with(['mahasiswa.user', 'penilaian', 'sertifikat'])
             ->where('pembimbing_id', $pembimbing->id)
             ->latest()
             ->get()
@@ -51,6 +57,7 @@ class PembimbingController extends Controller
                     'tanggal_selesai' => $item->tanggal_selesai,
                     'status'          => $item->status,
                     'sudah_dinilai'   => $item->penilaian !== null,
+                    'sudah_sertifikat'=> $item->sertifikat !== null,
                     'penilaian'       => $item->penilaian ? [
                         'nilai_total'      => $item->penilaian->nilai_total,
                         'kedisiplinan'     => $item->penilaian->kedisiplinan,
@@ -58,6 +65,13 @@ class PembimbingController extends Controller
                         'sikap'            => $item->penilaian->sikap,
                         'kehadiran'        => $item->penilaian->kehadiran,
                         'catatan'          => $item->penilaian->catatan,
+                    ] : null,
+                    'sertifikat'      => $item->sertifikat ? [
+                        'no_sertifikat'  => $item->sertifikat->no_sertifikat,
+                        'diterbitkan_at' => $item->sertifikat->diterbitkan_at,
+                        'file_pdf'       => $item->sertifikat->file_pdf
+                            ? asset('storage/' . $item->sertifikat->file_pdf)
+                            : null,
                     ] : null,
                 ];
             });
@@ -115,5 +129,48 @@ class PembimbingController extends Controller
             'message'     => 'Penilaian berhasil disimpan.',
             'nilai_total' => $nilaiTotal,
         ]);
+    }
+
+    // POST /api/pembimbing/sertifikat/{id}
+    // Pembimbing mengupload file PDF sertifikat yang sudah dibuat oleh instansi
+    public function uploadSertifikat(Request $request, $id)
+    {
+        $pembimbing = $request->user()->pembimbing;
+
+        $pendaftaran = PendaftaranMagang::with(['mahasiswa.user'])
+            ->where('id', $id)
+            ->where('pembimbing_id', $pembimbing->id)
+            ->firstOrFail();
+
+        // Sertifikat hanya bisa diupload setelah peserta dinilai
+        if ($pendaftaran->status !== 'selesai_dinilai') {
+            return response()->json([
+                'message' => 'Sertifikat hanya bisa diupload setelah peserta selesai dinilai.',
+            ], 422);
+        }
+
+        $request->validate([
+            'file_pdf'      => 'required|file|mimes:pdf|max:5120', // maks 5MB
+            'no_sertifikat' => 'required|string|max:50',
+        ]);
+
+        // Hapus file lama jika ada (untuk kasus re-upload / koreksi)
+        if ($pendaftaran->sertifikat && $pendaftaran->sertifikat->file_pdf) {
+            Storage::disk('public')->delete($pendaftaran->sertifikat->file_pdf);
+            $pendaftaran->sertifikat->delete();
+        }
+
+        // Simpan file PDF ke storage/app/public/sertifikat/
+        $filePath = $request->file('file_pdf')->store('sertifikat', 'public');
+
+        Sertifikat::create([
+            'pendaftaran_id' => $pendaftaran->id,
+            'no_sertifikat'  => $request->no_sertifikat,
+            'file_pdf'       => $filePath,
+        ]);
+
+        return response()->json([
+            'message' => 'Sertifikat berhasil diupload.',
+        ], 201);
     }
 }
