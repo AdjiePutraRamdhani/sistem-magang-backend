@@ -24,10 +24,10 @@ class AuthController extends Controller
             'nama_lengkap'  => 'required|string|max:150',
             'email'         => 'required|email|unique:users,email', // email tidak boleh duplikat
             'password'      => 'required|string|min:8|confirmed',   // confirmed = harus ada field password_confirmation
-            'no_telepon'    => 'nullable|string|max:20',
-            'nim_nisn'      => 'nullable|string|max:30',
+            'no_telepon'    => 'required|string|max:20',
+            'nim_nisn'      => 'required|string|max:30',
             'asal_instansi' => 'required|string|max:200',
-            'program_studi' => 'nullable|string|max:150',
+            'program_studi' => 'required|string|max:150',
         ]);
  
         // Buat akun user baru di tabel users.
