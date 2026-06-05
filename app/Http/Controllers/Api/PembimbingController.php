@@ -175,6 +175,8 @@ class PembimbingController extends Controller
             'file_pdf'       => $filePath,
         ]);
 
+        $pendaftaran->update(['status' => 'sudah_sertifikat']);
+
         return response()->json([
             'message' => 'Sertifikat berhasil diupload.',
         ], 201);

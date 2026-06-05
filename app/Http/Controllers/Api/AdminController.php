@@ -24,6 +24,7 @@ class AdminController extends Controller
             'menunggu'        => PendaftaranMagang::where('status', 'menunggu_persetujuan')->count(),
             'aktif'           => PendaftaranMagang::where('status', 'aktif')->count(),
             'selesai_dinilai' => PendaftaranMagang::where('status', 'selesai_dinilai')->count(),
+            'sudah_sertifikat' => PendaftaranMagang::where('status', 'sudah_sertifikat')->count(),
         ]);
     }
  

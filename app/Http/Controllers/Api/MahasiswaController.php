@@ -115,7 +115,7 @@ class MahasiswaController extends Controller
         $mahasiswa   = $request->user()->mahasiswa;
         $pendaftaran = PendaftaranMagang::with(['penilaian', 'sertifikat', 'pembimbing.user'])
             ->where('mahasiswa_id', $mahasiswa->id)
-            ->where('status', 'selesai_dinilai')
+            ->where('status', 'sudah_sertifikat')
             ->latest()
             ->first();
 

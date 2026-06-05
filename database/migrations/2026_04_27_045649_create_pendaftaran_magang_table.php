@@ -35,6 +35,7 @@ return new class extends Migration
                 'ditolak',
                 'aktif',
                 'selesai_dinilai',
+                'sudah_sertifikat',
             ])->default('menunggu_persetujuan');
  
             // Hanya diisi jika status = 'ditolak'
