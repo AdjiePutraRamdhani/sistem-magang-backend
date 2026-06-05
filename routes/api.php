@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\LandingController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\MahasiswaController;
 use App\Http\Controllers\Api\PembimbingController;
 use App\Http\Controllers\Api\PendaftaranController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/landing/overview', [LandingController::class, 'overview']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login',    [AuthController::class, 'login']);
 
