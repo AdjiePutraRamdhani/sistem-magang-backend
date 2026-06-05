@@ -3,6 +3,7 @@
 namespace App\Models;
  
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
  
 class PendaftaranMagang extends Model
 {
@@ -26,6 +27,19 @@ class PendaftaranMagang extends Model
         'tanggal_mulai'   => 'date:Y-m-d',
         'tanggal_selesai' => 'date:Y-m-d',
     ];
+
+    public static function syncStatus()
+    {
+        $today = Carbon::today();
+
+        // Disetujui -> Aktif
+        self::where('status', 'disetujui')
+            ->whereDate('tanggal_mulai', '<=', $today)
+            ->whereDate('tanggal_selesai', '>=', $today)
+            ->update([
+                'status' => 'aktif'
+            ]);
+    }
  
     // --- RELASI ---
     public function mahasiswa()

@@ -14,6 +14,8 @@ class PembimbingController extends Controller
     // GET /api/pembimbing/dashboard
     public function dashboard(Request $request)
     {
+        PendaftaranMagang::syncStatus();
+        
         $pembimbing = $request->user()->pembimbing;
 
         if (!$pembimbing) {
@@ -41,6 +43,8 @@ class PembimbingController extends Controller
     // GET /api/pembimbing/peserta
     public function peserta(Request $request)
     {
+        PendaftaranMagang::syncStatus();
+
         $pembimbing = $request->user()->pembimbing;
 
         $data = PendaftaranMagang::with(['mahasiswa.user', 'penilaian', 'sertifikat'])
@@ -53,8 +57,8 @@ class PembimbingController extends Controller
                     'nama_lengkap'    => $item->mahasiswa->user->nama_lengkap,
                     'asal_instansi'   => $item->mahasiswa->asal_instansi,
                     'program_studi'   => $item->mahasiswa->program_studi,
-                    'tanggal_mulai'   => $item->tanggal_mulai,
-                    'tanggal_selesai' => $item->tanggal_selesai,
+                    'tanggal_mulai'   => $item->tanggal_mulai->format('d M Y'),
+                    'tanggal_selesai' => $item->tanggal_selesai->format('d M Y'),
                     'status'          => $item->status,
                     'sudah_dinilai'   => $item->penilaian !== null,
                     'sudah_sertifikat'=> $item->sertifikat !== null,
@@ -82,6 +86,7 @@ class PembimbingController extends Controller
     // POST /api/pembimbing/nilai/{id}
     public function simpanNilai(Request $request, $id)
     {
+        PendaftaranMagang::syncStatus();
         $pembimbing  = $request->user()->pembimbing;
 
         $pendaftaran = PendaftaranMagang::where('id', $id)
@@ -135,6 +140,7 @@ class PembimbingController extends Controller
     // Pembimbing mengupload file PDF sertifikat yang sudah dibuat oleh instansi
     public function uploadSertifikat(Request $request, $id)
     {
+        PendaftaranMagang::syncStatus();
         $pembimbing = $request->user()->pembimbing;
 
         $pendaftaran = PendaftaranMagang::with(['mahasiswa.user'])

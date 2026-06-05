@@ -17,6 +17,8 @@ class AdminController extends Controller
     // ----------------------------------------------------------------
     public function dashboard()
     {
+        PendaftaranMagang::syncStatus();
+
         return response()->json([
             'total_peserta'   => PendaftaranMagang::whereIn('status', ['disetujui','aktif','selesai_dinilai'])->count(),
             'menunggu'        => PendaftaranMagang::where('status', 'menunggu_persetujuan')->count(),
@@ -31,6 +33,8 @@ class AdminController extends Controller
     // ----------------------------------------------------------------
     public function indexMahasiswa(Request $request)
     {
+        PendaftaranMagang::syncStatus();
+
         $query = PendaftaranMagang::with([
             'mahasiswa.user',
             'pembimbing.user',
@@ -65,7 +69,7 @@ class AdminController extends Controller
  
         return response()->json($data);
     }
- 
+    
     // ----------------------------------------------------------------
     // DELETE /api/admin/mahasiswa/{id}
     // ----------------------------------------------------------------

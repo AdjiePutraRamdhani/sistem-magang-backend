@@ -33,6 +33,7 @@ class PendaftaranController extends Controller
                 'status'          => $item->status,
                 'alasan_tolak'    => $item->alasan_tolak,
                 'file_surat'      => $item->file_surat,
+                'file_surat_url'  => asset('storage/' . $item->file_surat),
                 'created_at'      => $item->created_at,
                 'pembimbing'      => $item->pembimbing
                     ? $item->pembimbing->user->nama_lengkap
