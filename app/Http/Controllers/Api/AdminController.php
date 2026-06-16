@@ -96,6 +96,8 @@ class AdminController extends Controller
         $data = Pembimbing::with('user')->get()->map(fn($p) => [
             'id'           => $p->id,
             'nama_lengkap' => $p->user->nama_lengkap,
+            'nip'          => $p->nip,
+            'no_telepon'   => $p->user->no_telepon,
             'jabatan'      => $p->jabatan,
             'bidang'       => $p->bidang,
         ]);
@@ -113,6 +115,7 @@ class AdminController extends Controller
             'email'        => 'required|email|unique:users,email',
             'password'     => 'required|string|min:8',
             'nip'          => 'nullable|string|max:30',
+            'no_telepon'   => 'required|string|max:20',
             'jabatan'      => 'nullable|string|max:150',
             'bidang'       => 'nullable|string|max:150',
         ]);
@@ -121,6 +124,7 @@ class AdminController extends Controller
             'nama_lengkap' => $request->nama_lengkap,
             'email'        => $request->email,
             'password'     => Hash::make($request->password),
+            'no_telepon'   => $request->no_telepon,
             'role'         => 'pembimbing',
         ]);
  

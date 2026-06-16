@@ -40,8 +40,13 @@ class MahasiswaController extends Controller
                 'tanggal_selesai' => $pendaftaran->tanggal_selesai,
                 'status'          => $pendaftaran->status,
                 'alasan_tolak'    => $pendaftaran->alasan_tolak,
-                'pembimbing'      => $pendaftaran->pembimbing
-                    ? $pendaftaran->pembimbing->user->nama_lengkap
+                'pembimbing' => $pendaftaran->pembimbing
+                    ? [
+                        'nama_lengkap' => $pendaftaran->pembimbing->user->nama_lengkap,
+                        'jabatan'      => $pendaftaran->pembimbing->jabatan,
+                        'bidang'       => $pendaftaran->pembimbing->bidang,
+                        'no_telepon'   => $pendaftaran->pembimbing->user->no_telepon,
+                    ]
                     : null,
                 'penilaian'       => $pendaftaran->penilaian ? [
                     'kedisiplinan'     => $pendaftaran->penilaian->kedisiplinan,
