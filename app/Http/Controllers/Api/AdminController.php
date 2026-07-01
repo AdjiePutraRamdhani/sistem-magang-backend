@@ -8,6 +8,8 @@ use App\Models\PendaftaranMagang;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\WelcomePembimbingMail;
  
 class AdminController extends Controller
 {
@@ -78,12 +80,6 @@ class AdminController extends Controller
     {
         $pendaftaran = PendaftaranMagang::findOrFail($id);
  
-        if ($pendaftaran->status === 'aktif') {
-            return response()->json([
-                'message' => 'Data tidak dapat dihapus karena peserta sedang aktif magang.',
-            ], 422);
-        }
- 
         $pendaftaran->delete();
         return response()->json(['message' => 'Data berhasil dihapus.']);
     }
@@ -93,13 +89,15 @@ class AdminController extends Controller
     // ----------------------------------------------------------------
     public function indexPembimbing()
     {
-        $data = Pembimbing::with('user')->get()->map(fn($p) => [
+        $data = Pembimbing::with('user')->withCount('pendaftaranMagang')->get()->map(fn($p) => [
             'id'           => $p->id,
             'nama_lengkap' => $p->user->nama_lengkap,
+            'email'        => $p->user->email,
             'nip'          => $p->nip,
             'no_telepon'   => $p->user->no_telepon,
             'jabatan'      => $p->jabatan,
             'bidang'       => $p->bidang,
+            'total_mhs'    => $p->pendaftaran_magang_count,
         ]);
  
         return response()->json($data);
@@ -134,8 +132,32 @@ class AdminController extends Controller
             'jabatan' => $request->jabatan,
             'bidang'  => $request->bidang,
         ]);
+
+        // Kirim email selamat datang ke pembimbing
+        try {
+            Mail::to($user->email)->send(new WelcomePembimbingMail($user, $request->password));
+        } catch (\Exception $e) {
+            \Log::error('Gagal mengirim email welcome pembimbing: ' . $e->getMessage());
+        }
  
         return response()->json(['message' => 'Akun pembimbing berhasil dibuat.'], 201);
+    }
+
+    // ----------------------------------------------------------------
+    // DELETE /api/admin/pembimbing/{id}
+    // ----------------------------------------------------------------
+    public function destroyPembimbing($id)
+    {
+        $pembimbing = Pembimbing::findOrFail($id);
+        $user = $pembimbing->user;
+        
+        $pembimbing->delete();
+        
+        if ($user) {
+            $user->delete();
+        }
+
+        return response()->json(['message' => 'Data pembimbing berhasil dihapus.']);
     }
 }
  

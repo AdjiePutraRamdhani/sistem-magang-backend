@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PendaftaranMagang;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\PendaftaranStatusMail;
+use App\Mail\MahasiswaAssignedMail;
  
 class PendaftaranController extends Controller
 {
@@ -67,6 +70,22 @@ class PendaftaranController extends Controller
             'status'        => 'disetujui',
             'pembimbing_id' => $request->pembimbing_id,
         ]);
+
+        $pendaftaran->load(['mahasiswa.user', 'pembimbing.user']);
+
+        // Kirim email ke mahasiswa (status disetujui)
+        try {
+            Mail::to($pendaftaran->mahasiswa->user->email)->send(new PendaftaranStatusMail($pendaftaran));
+        } catch (\Exception $e) {
+            \Log::error('Gagal mengirim email status pendaftaran disetujui ke mahasiswa: ' . $e->getMessage());
+        }
+
+        // Kirim email ke pembimbing (ditugaskan bimbingan baru)
+        try {
+            Mail::to($pendaftaran->pembimbing->user->email)->send(new MahasiswaAssignedMail($pendaftaran));
+        } catch (\Exception $e) {
+            \Log::error('Gagal mengirim email penugasan bimbingan ke pembimbing: ' . $e->getMessage());
+        }
  
         return response()->json(['message' => 'Pendaftaran berhasil disetujui.']);
     }
@@ -93,6 +112,15 @@ class PendaftaranController extends Controller
             'status'       => 'ditolak',
             'alasan_tolak' => $request->alasan_tolak,
         ]);
+
+        $pendaftaran->load('mahasiswa.user');
+
+        // Kirim email ke mahasiswa (status ditolak)
+        try {
+            Mail::to($pendaftaran->mahasiswa->user->email)->send(new PendaftaranStatusMail($pendaftaran));
+        } catch (\Exception $e) {
+            \Log::error('Gagal mengirim email status pendaftaran ditolak ke mahasiswa: ' . $e->getMessage());
+        }
  
         return response()->json(['message' => 'Pendaftaran berhasil ditolak.']);
     }

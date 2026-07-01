@@ -8,6 +8,9 @@ use App\Models\PendaftaranMagang;
 use App\Models\Sertifikat;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\PenilaianUploadedMail;
+use App\Mail\SertifikatUploadedMail;
 
 class PembimbingController extends Controller
 {
@@ -130,6 +133,15 @@ class PembimbingController extends Controller
 
         $pendaftaran->update(['status' => 'selesai_dinilai']);
 
+        $pendaftaran->load(['mahasiswa.user', 'penilaian', 'pembimbing.user']);
+
+        // Kirim email ke mahasiswa (nilai telah selesai diinput)
+        try {
+            Mail::to($pendaftaran->mahasiswa->user->email)->send(new PenilaianUploadedMail($pendaftaran));
+        } catch (\Exception $e) {
+            \Log::error('Gagal mengirim email penilaian selesai ke mahasiswa: ' . $e->getMessage());
+        }
+
         return response()->json([
             'message'     => 'Penilaian berhasil disimpan.',
             'nilai_total' => $nilaiTotal,
@@ -176,6 +188,15 @@ class PembimbingController extends Controller
         ]);
 
         $pendaftaran->update(['status' => 'sudah_sertifikat']);
+
+        $pendaftaran->load(['mahasiswa.user', 'sertifikat']);
+
+        // Kirim email ke mahasiswa (sertifikat tersedia)
+        try {
+            Mail::to($pendaftaran->mahasiswa->user->email)->send(new SertifikatUploadedMail($pendaftaran));
+        } catch (\Exception $e) {
+            \Log::error('Gagal mengirim email sertifikat tersedia ke mahasiswa: ' . $e->getMessage());
+        }
 
         return response()->json([
             'message' => 'Sertifikat berhasil diupload.',

@@ -8,6 +8,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\WelcomeMahasiswaMail;
 use Illuminate\Validation\ValidationException;
  
 class AuthController extends Controller
@@ -50,6 +52,13 @@ class AuthController extends Controller
             'program_studi' => $request->program_studi,
         ]);
  
+        // Kirim email selamat datang ke mahasiswa
+        try {
+            Mail::to($user->email)->send(new WelcomeMahasiswaMail($user));
+        } catch (\Exception $e) {
+            \Log::error('Gagal mengirim email welcome mahasiswa: ' . $e->getMessage());
+        }
+
         // Buat token untuk user yang baru dibuat agar bisa langsung login
         $token = $user->createToken('auth_token')->plainTextToken;
  

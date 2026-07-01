@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\PendaftaranController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/landing/overview', [LandingController::class, 'overview']);
+Route::get('/landing/peserta',  [LandingController::class, 'peserta']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login',    [AuthController::class, 'login']);
 
@@ -23,6 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/mahasiswa/{id}',         [AdminController::class, 'destroyMahasiswa']);
         Route::get('/pembimbing',                [AdminController::class, 'indexPembimbing']);
         Route::post('/pembimbing',               [AdminController::class, 'storePembimbing']);
+        Route::delete('/pembimbing/{id}',        [AdminController::class, 'destroyPembimbing']);
         Route::get('/pendaftaran',               [PendaftaranController::class, 'index']);
         Route::post('/pendaftaran/{id}/setujui', [PendaftaranController::class, 'setujui']);
         Route::post('/pendaftaran/{id}/tolak',   [PendaftaranController::class, 'tolak']);
